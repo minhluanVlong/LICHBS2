@@ -230,6 +230,8 @@ export function schedulePatientsForDoctor(
       note: '', // Cột ghi chú để trống theo yêu cầu
       hasConflict: d.hasConflict,
       assignedDoctorName: doctor.name,
+      previousTime: d.patient.previousTime || '',
+      matchedPreviousDay: Boolean(d.patient.matchedPreviousDay),
     };
   });
 

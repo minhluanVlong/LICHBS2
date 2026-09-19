@@ -13,6 +13,7 @@ import {
   Building2,
   AlertTriangle,
   Eye,
+  CloudCheck,
 } from 'lucide-react';
 
 interface SavedSchedulesModalProps {
@@ -49,7 +50,13 @@ export const SavedSchedulesModal: React.FC<SavedSchedulesModalProps> = ({
               <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold">📚 Cơ Sở Dữ Liệu Lịch Đã Lưu ({savedSchedules.length})</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold">📚 Cơ Sở Dữ Liệu Lịch Đã Lưu ({savedSchedules.length})</h3>
+                <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold bg-teal-500/20 text-teal-300 border border-teal-500/30 px-2 py-0.5 rounded-full">
+                  <CloudCheck className="w-3 h-3" />
+                  Cloud Firestore
+                </span>
+              </div>
               <p className="text-xs text-slate-400 mt-0.5">
                 Các bản ghi lịch khám đã lưu trữ để làm căn cứ đối chiếu bảo lưu giờ cho các ngày tiếp theo
               </p>

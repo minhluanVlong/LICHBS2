@@ -212,10 +212,13 @@ export const DailyIntradayManager: React.FC<DailyIntradayManagerProps> = ({
       assignedDoctorName: assignedDoctor.name,
       isKS: isKS,
       isPKD: isPKD,
+      previousTime: '',
+      matchedPreviousDay: false,
       slotTime: predictedSlot.time,
       slotMinutes: predictedSlot.minutes,
       priorityGroup: isKS ? 'KS' : isPKD ? 'PKD' : 'CON_LAI',
       statusNote: noteText,
+      note: '',
       hasConflict: false,
     };
 

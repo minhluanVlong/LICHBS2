@@ -16,6 +16,13 @@ import { Step3ClinicalFlags } from './components/Step3ClinicalFlags';
 import { Step4ScheduleView } from './components/Step4ScheduleView';
 import { SavedSchedulesModal } from './components/SavedSchedulesModal';
 import { PrintScheduleModal } from './components/PrintScheduleModal';
+import { FirebaseAuthStatus } from './components/FirebaseAuthStatus';
+import { useAuth } from './context/AuthContext';
+import {
+  saveScheduleToFirestore,
+  deleteScheduleFromFirestore,
+  subscribeSavedSchedulesFromFirestore,
+} from './services/scheduleFirestore';
 import {
   CheckCircle2,
   Calendar,
@@ -30,6 +37,8 @@ import {
 } from 'lucide-react';
 
 export default function App() {
+  const { user } = useAuth();
+
   // Trạng thái Bước quy trình
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
 
@@ -84,6 +93,22 @@ export default function App() {
   // Quản lý biến động trong ngày (khung giờ trống đã giải phóng & nhật ký)
   const [freedSlots, setFreedSlots] = useState<any[]>([]);
   const [intradayActivities, setIntradayActivities] = useState<any[]>([]);
+
+  // Lắng nghe dữ liệu thời gian thực từ Cloud Firestore khi người dùng đăng nhập
+  useEffect(() => {
+    if (!user) return;
+    const unsubscribe = subscribeSavedSchedulesFromFirestore((firestoreList) => {
+      if (firestoreList && firestoreList.length > 0) {
+        setSavedHistory((prev) => {
+          const map = new Map<string, SavedScheduleDay>();
+          prev.forEach((p) => map.set(p.id, p));
+          firestoreList.forEach((f) => map.set(f.id, f));
+          return Array.from(map.values()).sort((a, b) => b.id.localeCompare(a.id));
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   const handleOpenPrintModal = (doctorId: string = 'all') => {
     setPrintDoctorId(doctorId);
@@ -164,7 +189,8 @@ export default function App() {
         assignedDoctorName: doc.name,
         isKS,
         isPKD,
-        previousTime: prevTime,
+        previousTime: prevTime || '',
+        matchedPreviousDay: Boolean(prevTime),
       };
 
       const list = patientsByDoctor.get(doc.id) || [];
@@ -196,11 +222,14 @@ export default function App() {
     const ksCount = scheduledPatients.filter((p) => p.isKS).length;
     const pkdCount = scheduledPatients.filter((p) => p.isPKD).length;
 
+    const existing = savedHistory.find((h) => h.id === selectedDate);
+    const createdAt = existing ? existing.createdAt : new Date().toISOString();
+
     const record: SavedScheduleDay = {
       id: selectedDate,
       displayDate: dateDisplayInfo.displayDate,
       dayOfWeek: dateDisplayInfo.dayOfWeek,
-      createdAt: new Date().toISOString(),
+      createdAt,
       startTime,
       doctors,
       patients: scheduledPatients,
@@ -211,7 +240,19 @@ export default function App() {
 
     saveScheduleDay(record);
     setSavedHistory(getSavedSchedules());
-    showToast(`Đã lưu thành công lịch ngày ${dateDisplayInfo.displayDate} vào cơ sở dữ liệu!`);
+
+    if (user) {
+      saveScheduleToFirestore(record)
+        .then(() => {
+          showToast(`Đã lưu lịch ngày ${dateDisplayInfo.displayDate} và đồng bộ lên Cloud Firestore!`);
+        })
+        .catch((err) => {
+          console.error('Lỗi đồng bộ Cloud Firestore:', err);
+          showToast(`Đã lưu lịch tại chỗ (Lỗi đám mây: ${err.message || 'thất bại'})`);
+        });
+    } else {
+      showToast(`Đã lưu thành công lịch ngày ${dateDisplayInfo.displayDate} vào cơ sở dữ liệu!`);
+    }
   };
 
   // Cập nhật danh sách bệnh nhân sau khi xuất viện hoặc thêm bệnh nhân mới và tự động lưu vào LỊCH ĐÃ LƯU
@@ -230,11 +271,14 @@ export default function App() {
     const ksCount = updatedList.filter((p) => p.isKS).length;
     const pkdCount = updatedList.filter((p) => p.isPKD).length;
 
+    const existing = savedHistory.find((h) => h.id === selectedDate);
+    const createdAt = existing ? existing.createdAt : new Date().toISOString();
+
     const record: SavedScheduleDay = {
       id: selectedDate,
       displayDate: dateDisplayInfo.displayDate,
       dayOfWeek: dateDisplayInfo.dayOfWeek,
-      createdAt: new Date().toISOString(),
+      createdAt,
       startTime,
       doctors,
       patients: updatedList,
@@ -245,6 +289,12 @@ export default function App() {
 
     saveScheduleDay(record);
     setSavedHistory(getSavedSchedules());
+
+    if (user) {
+      saveScheduleToFirestore(record).catch((err) => {
+        console.error('Lỗi tự động đồng bộ biến động lên Cloud Firestore:', err);
+      });
+    }
   };
 
   // Mở lịch đã lưu để xem chi tiết hoặc cập nhật biến động trong ngày
@@ -263,6 +313,12 @@ export default function App() {
   const handleDeleteSavedSchedule = (id: string) => {
     const updated = deleteSavedSchedule(id);
     setSavedHistory(updated);
+
+    if (user) {
+      deleteScheduleFromFirestore(id).catch((err) => {
+        console.error('Lỗi xóa trên Cloud Firestore:', err);
+      });
+    }
     showToast('Đã xóa bản ghi lịch đã chọn.');
   };
 
@@ -315,14 +371,17 @@ export default function App() {
               </div>
             </div>
 
+            {/* Trạng thái xác thực Firebase & Đồng bộ đám mây */}
+            <FirebaseAuthStatus />
+
             <button
               id="btn-header-saved-schedules"
               onClick={() => setIsSavedModalOpen(true)}
-              className="px-3.5 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm"
+              className="px-3.5 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
               title="Xem cơ sở dữ liệu các ngày đã lưu"
             >
               <BookOpen className="w-4 h-4 text-indigo-400" />
-              Lịch Đã Lưu ({savedHistory.length})
+              <span>Lịch Đã Lưu ({savedHistory.length})</span>
             </button>
           </div>
         </div>

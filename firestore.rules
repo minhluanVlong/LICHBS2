@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net: Default Deny All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.email == 'minhluan.ttytcl@gmail.com');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (request.auth.token.email == 'minhluan.ttytcl@gmail.com');
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation Blueprint for SavedSchedule
+    function isValidSavedSchedule(data) {
+      return data.keys().hasAll(['id', 'displayDate', 'dayOfWeek', 'createdAt', 'startTime', 'doctors', 'patients'])
+        && data.keys().hasOnly(['id', 'displayDate', 'dayOfWeek', 'createdAt', 'startTime', 'doctors', 'patients', 'totalPatients', 'totalKS', 'totalPKD', 'updatedAt'])
+        && data.id is string && data.id.size() <= 64
+        && data.displayDate is string && data.displayDate.size() <= 32
+        && data.dayOfWeek is string && data.dayOfWeek.size() <= 32
+        && data.createdAt is string && data.createdAt.size() <= 64
+        && data.startTime is string && data.startTime.size() <= 16
+        && data.doctors is list && data.doctors.size() <= 50
+        && data.patients is list && data.patients.size() <= 1000
+        && (!('totalPatients' in data) || data.totalPatients is number)
+        && (!('totalKS' in data) || data.totalKS is number)
+        && (!('totalPKD' in data) || data.totalPKD is number)
+        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    // Collection: /saved_schedules/{scheduleId}
+    match /saved_schedules/{scheduleId} {
+      allow get: if isVerifiedUser() && isValidId(scheduleId);
+      allow list: if isVerifiedUser();
+
+      allow create: if isVerifiedUser()
+        && isValidId(scheduleId)
+        && scheduleId == incoming().id
+        && isValidSavedSchedule(incoming());
+
+      allow update: if isVerifiedUser()
+        && isValidId(scheduleId)
+        && isValidSavedSchedule(incoming())
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt;
+
+      allow delete: if isVerifiedUser() && isValidId(scheduleId);
+    }
+  }
+}

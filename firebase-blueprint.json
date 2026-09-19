@@ -1,0 +1,76 @@
+{
+  "entities": {
+    "SavedSchedule": {
+      "title": "SavedSchedule",
+      "description": "Bản ghi lịch điều phối khám bệnh nội trú theo ngày",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Mã ngày y lệnh dạng YYYY-MM-DD",
+          "maxLength": 64
+        },
+        "displayDate": {
+          "type": "string",
+          "description": "Ngày hiển thị dạng DD/MM/YYYY",
+          "maxLength": 32
+        },
+        "dayOfWeek": {
+          "type": "string",
+          "description": "Thứ trong tuần",
+          "maxLength": 32
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Thời gian tạo bản ghi ISO string",
+          "maxLength": 64
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Thời gian bắt đầu khám HH:mm",
+          "maxLength": 16
+        },
+        "doctors": {
+          "type": "array",
+          "description": "Danh sách bác sĩ và phân công buồng bệnh"
+        },
+        "patients": {
+          "type": "array",
+          "description": "Danh sách bệnh nhân và mốc giờ khám 5 phút"
+        },
+        "totalPatients": {
+          "type": "number",
+          "description": "Tổng số bệnh nhân"
+        },
+        "totalKS": {
+          "type": "number",
+          "description": "Tổng số ca kháng sinh"
+        },
+        "totalPKD": {
+          "type": "number",
+          "description": "Tổng số ca phun khí dung"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Thời gian cập nhật gần nhất ISO string",
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "id",
+        "displayDate",
+        "dayOfWeek",
+        "createdAt",
+        "startTime",
+        "doctors",
+        "patients"
+      ]
+    }
+  },
+  "firestore": {
+    "/saved_schedules/{scheduleId}": {
+      "schema": "SavedSchedule",
+      "description": "Bộ sưu tập lưu trữ lịch khám nội trú theo từng ngày"
+    }
+  }
+}
