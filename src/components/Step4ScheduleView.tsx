@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ScheduledPatient, Doctor, SavedScheduleDay } from '../types';
 import { exportScheduleToExcel } from '../utils/excelParser';
 import {
@@ -18,6 +18,8 @@ import {
   LayoutGrid,
   Table as TableIcon,
   ArrowLeft,
+  ChevronDown,
+  User,
 } from 'lucide-react';
 
 interface Step4ScheduleViewProps {
@@ -29,7 +31,7 @@ interface Step4ScheduleViewProps {
   startTime: string;
   onSaveCurrentSchedule: () => void;
   onOpenSavedModal: () => void;
-  onOpenPrintModal: () => void;
+  onOpenPrintModal: (doctorId?: string) => void;
   onPrevStep: () => void;
   isSavedToday: boolean;
 }
@@ -53,6 +55,19 @@ export const Step4ScheduleView: React.FC<Step4ScheduleViewProps> = ({
   const [roomFilter, setRoomFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [showPdfMenu, setShowPdfMenu] = useState(false);
+  const pdfMenuRef = useRef<HTMLDivElement>(null);
+
+  // Đóng menu khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (pdfMenuRef.current && !pdfMenuRef.current.contains(e.target as Node)) {
+        setShowPdfMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Thống kê
   const stats = useMemo(() => {
@@ -175,21 +190,86 @@ export const Step4ScheduleView: React.FC<Step4ScheduleViewProps> = ({
 
             <button
               id="btn-print-schedule"
-              onClick={onOpenPrintModal}
-              className="px-4 py-2.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-teal-300 border border-slate-700 rounded-xl flex items-center gap-2 transition-colors shadow-sm"
+              onClick={() => onOpenPrintModal('all')}
+              className="px-4 py-2.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-teal-300 border border-slate-700 rounded-xl flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
             >
               <Printer className="w-4 h-4" />
               [🖨 IN LỊCH]
             </button>
 
-            <button
-              id="btn-export-pdf"
-              onClick={onOpenPrintModal}
-              className="px-4 py-2.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-rose-300 border border-slate-700 rounded-xl flex items-center gap-2 transition-colors shadow-sm"
-            >
-              <FileText className="w-4 h-4" />
-              [📄 XUẤT PDF]
-            </button>
+            {/* Nút Xuất PDF theo Bác sĩ */}
+            <div className="relative" ref={pdfMenuRef}>
+              <button
+                id="btn-export-pdf"
+                onClick={() => setShowPdfMenu(!showPdfMenu)}
+                className="px-4 py-2.5 text-xs font-bold bg-rose-700 hover:bg-rose-600 text-white rounded-xl flex items-center gap-2 transition-colors shadow-md cursor-pointer"
+                title="Xuất file PDF theo tên bác sĩ hoặc toàn bộ khoa"
+              >
+                <FileText className="w-4 h-4" />
+                [📄 XUẤT FILE PDF]
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showPdfMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Menu Dropdown Xuất PDF */}
+              {showPdfMenu && (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-2.5 z-40 text-xs">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2.5 py-1">
+                    Xuất Bảng Lịch Khám (Chuẩn A4)
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setShowPdfMenu(false);
+                      onOpenPrintModal('all');
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-slate-800 rounded-xl text-slate-200 flex items-center justify-between transition-colors cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-teal-400" />
+                      <span className="font-bold">Toàn bộ Bác sĩ (Gộp)</span>
+                    </div>
+                    <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">
+                      {scheduledPatients.length} ca
+                    </span>
+                  </button>
+
+                  <div className="h-px bg-slate-800 my-2" />
+
+                  <div className="text-[10px] font-bold text-rose-400 uppercase tracking-wider px-2.5 py-1 flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5" />
+                    Xuất File PDF Từng Bác Sĩ:
+                  </div>
+
+                  <div className="space-y-1 mt-1 max-h-52 overflow-y-auto pr-1">
+                    {doctors.map((d) => {
+                      const count = scheduledPatients.filter((p) => p.doctorId === d.id).length;
+                      return (
+                        <button
+                          key={d.id}
+                          onClick={() => {
+                            setShowPdfMenu(false);
+                            onOpenPrintModal(d.id);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-rose-950/60 rounded-xl text-slate-200 flex items-center justify-between transition-colors cursor-pointer group border border-transparent hover:border-rose-800/60"
+                        >
+                          <div className="truncate mr-2">
+                            <div className="font-bold text-slate-100 group-hover:text-rose-200 truncate">
+                              {d.name}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-mono">
+                              Phòng: {d.assignedRooms.join(', ')}
+                            </div>
+                          </div>
+                          <span className="text-[10px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full font-mono font-bold shrink-0">
+                            {count} ca
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -337,6 +417,26 @@ export const Step4ScheduleView: React.FC<Step4ScheduleViewProps> = ({
                 </option>
               ))}
             </select>
+            {doctorFilter !== 'all' && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => onOpenPrintModal(doctorFilter)}
+                  className="px-2.5 py-1.5 text-xs font-bold bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                  title="In lịch khám trực tiếp cho riêng Bác sĩ này"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  In Lịch BS Này
+                </button>
+                <button
+                  onClick={() => onOpenPrintModal(doctorFilter)}
+                  className="px-2.5 py-1.5 text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                  title="Xuất file PDF lịch khám cho riêng Bác sĩ này"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Xuất PDF BS Này
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -521,19 +621,39 @@ export const Step4ScheduleView: React.FC<Step4ScheduleViewProps> = ({
                 className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col"
               >
                 {/* Doctor Column Header */}
-                <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+                <div className="p-4 bg-slate-900 text-white flex items-center justify-between gap-2">
                   <div>
                     <h3 className="font-bold text-sm text-white">{doc.name}</h3>
                     <div className="text-[11px] text-slate-400 font-mono mt-0.5">
                       Phòng: {doc.assignedRooms.join(', ')}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-teal-400 text-slate-950 font-mono">
-                      {list.length} ca
-                    </span>
-                    <div className="text-[10px] text-slate-400 font-mono mt-1">
-                      {firstTime} - {lastTime}
+                  <div className="flex items-center gap-2">
+                    {/* Nút In trực tiếp */}
+                    <button
+                      onClick={() => onOpenPrintModal(doc.id)}
+                      className="px-2.5 py-1 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-teal-300 border border-slate-700 rounded-lg flex items-center gap-1 transition-all shadow-xs active:scale-95 cursor-pointer"
+                      title={`In lịch khám riêng cho ${doc.name}`}
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      In
+                    </button>
+                    {/* Nút Xuất PDF */}
+                    <button
+                      onClick={() => onOpenPrintModal(doc.id)}
+                      className="px-2.5 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-lg flex items-center gap-1 transition-all shadow-xs active:scale-95 cursor-pointer"
+                      title={`Xuất file PDF lịch khám riêng cho ${doc.name}`}
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Xuất PDF
+                    </button>
+                    <div className="text-right ml-1">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded bg-teal-400 text-slate-950 font-mono">
+                        {list.length} ca
+                      </span>
+                      <div className="text-[10px] text-slate-400 font-mono mt-1">
+                        {firstTime} - {lastTime}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -618,11 +738,18 @@ export const Step4ScheduleView: React.FC<Step4ScheduleViewProps> = ({
             Tải File Excel Lịch Khám
           </button>
           <button
-            onClick={onOpenPrintModal}
-            className="px-4 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors flex items-center gap-1.5"
+            onClick={() => onOpenPrintModal('all')}
+            className="px-4 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-900 text-teal-300 border border-slate-700 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Printer className="w-3.5 h-3.5 text-teal-400" />
             In Lịch Khám
+          </button>
+          <button
+            onClick={() => onOpenPrintModal('all')}
+            className="px-4 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Xuất File PDF
           </button>
         </div>
       </div>

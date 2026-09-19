@@ -78,7 +78,13 @@ export default function App() {
   // Trạng thái Modal
   const [isSavedModalOpen, setIsSavedModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printDoctorId, setPrintDoctorId] = useState<string>('all');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const handleOpenPrintModal = (doctorId: string = 'all') => {
+    setPrintDoctorId(doctorId);
+    setIsPrintModalOpen(true);
+  };
 
   // Hiển thị ngày và thứ
   const dateDisplayInfo = useMemo(() => {
@@ -365,7 +371,7 @@ export default function App() {
             startTime={startTime}
             onSaveCurrentSchedule={handleSaveCurrentSchedule}
             onOpenSavedModal={() => setIsSavedModalOpen(true)}
-            onOpenPrintModal={() => setIsPrintModalOpen(true)}
+            onOpenPrintModal={handleOpenPrintModal}
             onPrevStep={() => setCurrentStep(3)}
             isSavedToday={isSavedToday}
           />
@@ -400,6 +406,7 @@ export default function App() {
         dateStr={dateDisplayInfo.displayDate}
         dayOfWeek={dateDisplayInfo.dayOfWeek}
         startTime={startTime}
+        initialDoctorId={printDoctorId}
       />
     </div>
   );

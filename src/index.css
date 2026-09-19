@@ -6,26 +6,79 @@
 }
 
 @media print {
-  body * {
-    visibility: hidden;
+  /* Ẩn các thành phần bên ngoài bảng in */
+  header,
+  footer,
+  main,
+  #app-header,
+  .print-hidden,
+  .print\:hidden {
+    display: none !important;
   }
 
-  #printable-a4-area,
-  #printable-a4-area * {
-    visibility: visible;
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  #print-modal-backdrop {
+    position: static !important;
+    display: block !important;
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    inset: auto !important;
+    z-index: auto !important;
+  }
+
+  #print-modal-container {
+    position: static !important;
+    display: block !important;
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  #print-scroll-container {
+    position: static !important;
+    display: block !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
   }
 
   #printable-a4-area {
-    position: absolute;
-    left: 0;
-    top: 0;
+    position: static !important;
+    display: block !important;
+    background: #ffffff !important;
     width: 100% !important;
     max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
+    min-height: auto !important;
     border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
   .print-page-break-avoid {
@@ -34,7 +87,7 @@
   }
 
   .print-slot-time {
-    font-size: 15pt !important;
+    font-size: 14pt !important;
     font-weight: 900 !important;
     color: #000000 !important;
     letter-spacing: 0.04em !important;
