@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@media print {
+  .print-slot-time {
+    font-size: 15pt !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    letter-spacing: 0.04em !important;
+  }
+}

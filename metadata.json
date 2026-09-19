@@ -1,0 +1,6 @@
+{
+  "name": "Hệ thống Điều phối Lịch khám Bệnh Nội viện",
+  "description": "Hệ thống điều phối lịch khám bệnh nội viện thông minh: kiểm tra mã phòng, phân bổ bác sĩ, xác nhận chỉ định KS/PKD, đối chiếu bảo lưu giờ ngày trước và lập lịch khám 5 phút chính xác.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
