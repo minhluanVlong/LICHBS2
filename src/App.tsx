@@ -81,6 +81,10 @@ export default function App() {
   const [printDoctorId, setPrintDoctorId] = useState<string>('all');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Quản lý biến động trong ngày (khung giờ trống đã giải phóng & nhật ký)
+  const [freedSlots, setFreedSlots] = useState<any[]>([]);
+  const [intradayActivities, setIntradayActivities] = useState<any[]>([]);
+
   const handleOpenPrintModal = (doctorId: string = 'all') => {
     setPrintDoctorId(doctorId);
     setIsPrintModalOpen(true);
@@ -208,6 +212,52 @@ export default function App() {
     saveScheduleDay(record);
     setSavedHistory(getSavedSchedules());
     showToast(`Đã lưu thành công lịch ngày ${dateDisplayInfo.displayDate} vào cơ sở dữ liệu!`);
+  };
+
+  // Cập nhật danh sách bệnh nhân sau khi xuất viện hoặc thêm bệnh nhân mới và tự động lưu vào LỊCH ĐÃ LƯU
+  const handleUpdatePatients = (
+    updatedList: ScheduledPatient[],
+    toastMsg: string,
+    updatedFreed?: any[]
+  ) => {
+    setScheduledPatients(updatedList);
+    if (updatedFreed !== undefined) {
+      setFreedSlots(updatedFreed);
+    }
+    showToast(toastMsg);
+
+    // Tự động đồng bộ và lưu phiên bản cập nhật vào LỊCH ĐÃ LƯU
+    const ksCount = updatedList.filter((p) => p.isKS).length;
+    const pkdCount = updatedList.filter((p) => p.isPKD).length;
+
+    const record: SavedScheduleDay = {
+      id: selectedDate,
+      displayDate: dateDisplayInfo.displayDate,
+      dayOfWeek: dateDisplayInfo.dayOfWeek,
+      createdAt: new Date().toISOString(),
+      startTime,
+      doctors,
+      patients: updatedList,
+      totalPatients: updatedList.length,
+      totalKS: ksCount,
+      totalPKD: pkdCount,
+    };
+
+    saveScheduleDay(record);
+    setSavedHistory(getSavedSchedules());
+  };
+
+  // Mở lịch đã lưu để xem chi tiết hoặc cập nhật biến động trong ngày
+  const handleLoadScheduleForView = (schedule: SavedScheduleDay) => {
+    setSelectedDate(schedule.id);
+    if (schedule.startTime) setStartTime(schedule.startTime);
+    setDoctors(schedule.doctors);
+    setScheduledPatients(schedule.patients);
+    setCurrentStep(4);
+    setIsSavedModalOpen(false);
+    showToast(
+      `Đã mở lịch ngày ${schedule.displayDate}. Bạn có thể xem chi tiết, xuất viện hoặc thêm bệnh nhân mới!`
+    );
   };
 
   const handleDeleteSavedSchedule = (id: string) => {
@@ -374,6 +424,11 @@ export default function App() {
             onOpenPrintModal={handleOpenPrintModal}
             onPrevStep={() => setCurrentStep(3)}
             isSavedToday={isSavedToday}
+            onUpdatePatients={handleUpdatePatients}
+            freedSlots={freedSlots}
+            setFreedSlots={setFreedSlots}
+            activities={intradayActivities}
+            setActivities={setIntradayActivities}
           />
         )}
       </main>
@@ -396,6 +451,7 @@ export default function App() {
         onClose={() => setIsSavedModalOpen(false)}
         savedSchedules={savedHistory}
         onDeleteSchedule={handleDeleteSavedSchedule}
+        onLoadScheduleForView={handleLoadScheduleForView}
       />
 
       <PrintScheduleModal

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ScheduledPatient, Doctor, SavedScheduleDay } from '../types';
 import { exportScheduleToExcel } from '../utils/excelParser';
+import { DailyIntradayManager } from './DailyIntradayManager';
 import {
   Save,
   BookOpen,
@@ -20,6 +21,10 @@ import {
   ArrowLeft,
   ChevronDown,
   User,
+  RefreshCw,
+  UserMinus,
+  UserPlus,
+  Sparkles,
 } from 'lucide-react';
 
 interface Step4ScheduleViewProps {
@@ -34,6 +39,15 @@ interface Step4ScheduleViewProps {
   onOpenPrintModal: (doctorId?: string) => void;
   onPrevStep: () => void;
   isSavedToday: boolean;
+  onUpdatePatients?: (
+    updatedList: ScheduledPatient[],
+    toastMsg: string,
+    freedSlotsUpdate?: any[]
+  ) => void;
+  freedSlots?: any[];
+  setFreedSlots?: React.Dispatch<React.SetStateAction<any[]>>;
+  activities?: any[];
+  setActivities?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 export const Step4ScheduleView: React.FC<Step4ScheduleViewProps> = ({
@@ -48,6 +62,11 @@ export const Step4ScheduleView: React.FC<Step4ScheduleViewProps> = ({
   onOpenPrintModal,
   onPrevStep,
   isSavedToday,
+  onUpdatePatients,
+  freedSlots = [],
+  setFreedSlots,
+  activities = [],
+  setActivities,
 }) => {
   // Bộ lọc
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'KS' | 'PKD' | 'CON_LAI'>('all');
@@ -57,6 +76,49 @@ export const Step4ScheduleView: React.FC<Step4ScheduleViewProps> = ({
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [showPdfMenu, setShowPdfMenu] = useState(false);
   const pdfMenuRef = useRef<HTMLDivElement>(null);
+
+  // Quản lý biến động trong ngày
+  const [showIntradayManager, setShowIntradayManager] = useState(false);
+  const [quickDischargingPatient, setQuickDischargingPatient] = useState<ScheduledPatient | null>(null);
+
+  // Xử lý xuất viện nhanh trực tiếp từ bảng
+  const handleExecuteQuickDischarge = (patient: ScheduledPatient) => {
+    if (!onUpdatePatients) return;
+
+    const updatedList = scheduledPatients.filter((p) => p.id !== patient.id);
+    const newFreedSlot = {
+      doctorId: patient.doctorId,
+      doctorName: patient.assignedDoctorName,
+      time: patient.slotTime,
+      minutes: patient.slotMinutes,
+      freedFromPatientName: patient.name,
+      freedAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    const updatedFreed = [...freedSlots, newFreedSlot];
+    if (setFreedSlots) setFreedSlots(updatedFreed);
+
+    if (setActivities) {
+      setActivities((prev) => [
+        {
+          id: `act-${Date.now()}`,
+          time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+          type: 'discharge',
+          title: `Xuất viện: ${patient.name}`,
+          description: `Phòng ${patient.normalizedRoom} (${patient.assignedDoctorName}). Đã giải phóng khung giờ ${patient.slotTime}.`,
+        },
+        ...prev,
+      ]);
+    }
+
+    onUpdatePatients(
+      updatedList,
+      `✓ Đã xuất viện BN ${patient.name}. Khung giờ ${patient.slotTime} của ${patient.assignedDoctorName} đã được giải phóng!`,
+      updatedFreed
+    );
+
+    setQuickDischargingPatient(null);
+  };
 
   // Đóng menu khi click ra ngoài
   useEffect(() => {
@@ -197,6 +259,26 @@ export const Step4ScheduleView: React.FC<Step4ScheduleViewProps> = ({
               [🖨 IN LỊCH]
             </button>
 
+            {/* Nút Quản Lý Biến Động Trong Ngày (Xuất Viện & Bổ Sung BN Mới) */}
+            <button
+              id="btn-toggle-intraday"
+              onClick={() => setShowIntradayManager(!showIntradayManager)}
+              className={`px-4 py-2.5 text-xs font-bold rounded-xl flex items-center gap-2 transition-all shadow-md cursor-pointer border ${
+                showIntradayManager
+                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-500 ring-2 ring-indigo-400'
+                  : 'bg-indigo-950/90 hover:bg-indigo-900 text-indigo-200 border-indigo-700/80'
+              }`}
+              title="Quản lý xuất viện, giải phóng giờ và tiếp nhận bệnh nhân mới tái sắp xếp thông minh"
+            >
+              <RefreshCw className={`w-4 h-4 text-indigo-300 ${showIntradayManager ? 'animate-spin-once' : ''}`} />
+              <span>[🔄 BIẾN ĐỘNG TRONG NGÀY]</span>
+              {freedSlots.length > 0 && (
+                <span className="px-1.5 py-0.2 bg-amber-400 text-slate-950 font-black text-[10px] rounded-full">
+                  {freedSlots.length} trống
+                </span>
+              )}
+            </button>
+
             {/* Nút Xuất PDF theo Bác sĩ */}
             <div className="relative" ref={pdfMenuRef}>
               <button
@@ -313,6 +395,23 @@ export const Step4ScheduleView: React.FC<Step4ScheduleViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Quản lý Biến Động Trong Ngày (Xuất Viện & Bổ Sung BN Mới) */}
+      {showIntradayManager && onUpdatePatients && (
+        <div className="animate-in fade-in slide-in-from-top-3 duration-200">
+          <DailyIntradayManager
+            scheduledPatients={scheduledPatients}
+            doctors={doctors}
+            startTime={startTime}
+            onUpdatePatients={onUpdatePatients}
+            freedSlots={freedSlots}
+            setFreedSlots={setFreedSlots || (() => {})}
+            activities={activities}
+            setActivities={setActivities || (() => {})}
+            onClose={() => setShowIntradayManager(false)}
+          />
+        </div>
+      )}
 
       {/* View Switcher & Filters */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
@@ -490,12 +589,13 @@ export const Step4ScheduleView: React.FC<Step4ScheduleViewProps> = ({
                   <th className="py-3 px-2 text-center w-14">PKD</th>
                   <th className="py-3 px-3 text-center w-24">Giờ Ngày Trước</th>
                   <th className="py-3 px-4 text-center w-36">Ghi Chú</th>
+                  <th className="py-3 px-3 text-center w-28">Thao Tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800">
                 {filteredPatients.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-8 text-center text-slate-400">
+                    <td colSpan={11} className="py-8 text-center text-slate-400">
                       Không tìm thấy bệnh nhân nào khớp với bộ lọc hiện tại.
                     </td>
                   </tr>
@@ -589,6 +689,36 @@ export const Step4ScheduleView: React.FC<Step4ScheduleViewProps> = ({
                         {/* Cột Ghi Chú - Để trống hoàn toàn theo yêu cầu người dùng */}
                         <td className="py-2.5 px-4 text-center text-xs text-slate-400">
                           {p.note || ''}
+                        </td>
+
+                        {/* Cột Thao Tác: Xuất viện nhanh */}
+                        <td className="py-2.5 px-3 text-center">
+                          {quickDischargingPatient?.id === p.id ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => handleExecuteQuickDischarge(p)}
+                                className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[11px] font-bold shadow-xs cursor-pointer"
+                                title="Xác nhận xuất viện"
+                              >
+                                Đồng ý
+                              </button>
+                              <button
+                                onClick={() => setQuickDischargingPatient(null)}
+                                className="px-1.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-[11px] cursor-pointer"
+                              >
+                                Hủy
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setQuickDischargingPatient(p)}
+                              className="px-2.5 py-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg inline-flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                              title={`Cho BN ${p.name} xuất viện và giải phóng khung giờ ${p.slotTime}`}
+                            >
+                              <UserMinus className="w-3 h-3 text-rose-600" />
+                              Xuất viện
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -697,7 +827,7 @@ export const Step4ScheduleView: React.FC<Step4ScheduleViewProps> = ({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           {p.isKS && (
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-800">
                               KS
@@ -707,6 +837,32 @@ export const Step4ScheduleView: React.FC<Step4ScheduleViewProps> = ({
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-100 text-teal-800">
                               PKD
                             </span>
+                          )}
+
+                          {/* Nút Xuất viện nhanh */}
+                          {quickDischargingPatient?.id === p.id ? (
+                            <div className="flex items-center gap-1 bg-rose-50 border border-rose-200 p-1 rounded-lg">
+                              <button
+                                onClick={() => handleExecuteQuickDischarge(p)}
+                                className="px-1.5 py-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded text-[10px] font-bold shadow-xs cursor-pointer"
+                              >
+                                Ra
+                              </button>
+                              <button
+                                onClick={() => setQuickDischargingPatient(null)}
+                                className="px-1 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-[10px] cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setQuickDischargingPatient(p)}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                              title={`Xuất viện BN ${p.name}`}
+                            >
+                              <UserMinus className="w-3.5 h-3.5" />
+                            </button>
                           )}
                         </div>
                       </div>

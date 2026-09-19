@@ -24,10 +24,10 @@ export const PrintScheduleModal: React.FC<PrintScheduleModalProps> = ({
   initialDoctorId = 'all',
 }) => {
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>(initialDoctorId);
-  // Chế độ in từng bác sĩ 1 trang riêng khi chọn Tất cả
-  const [isSeparateDoctorPages, setIsSeparateDoctorPages] = useState<boolean>(false);
-  // Chế độ 4 cột chuẩn theo yêu cầu người dùng: STT, TÊN BỆNH NHÂN, GIỜ Y LỆNH, GHI CHÚ
-  const [isSimpleMode, setIsSimpleMode] = useState<boolean>(true);
+  // Chế độ in từng bác sĩ 1 trang riêng khi chọn Tất cả (Mặc định BẬT để đảm bảo ngắt trang tuyệt đối)
+  const [isSeparateDoctorPages, setIsSeparateDoctorPages] = useState<boolean>(true);
+  // Chế độ 5 cột chuẩn theo quy định: STT, HỌ VÀ TÊN, GIỜ Y LỆNH, GIƯỜNG PHÒNG, GHI CHÚ
+  const [isFiveColumnMode, setIsFiveColumnMode] = useState<boolean>(true);
   // Tùy chọn kích cỡ chữ để vừa vặn 1 trang A4
   const [densityMode, setDensityMode] = useState<'auto' | 'compact' | 'normal' | 'large'>('auto');
 
@@ -242,111 +242,134 @@ export const PrintScheduleModal: React.FC<PrintScheduleModalProps> = ({
         }`}
       >
         <div>
-          {/* Header Bệnh Viện & Khoa Điều Trị */}
+          {/* Header Bệnh Viện & Khoa Điều Trị theo đúng chuẩn Bộ Y tế & prompt */}
           <div className={`border-b-2 border-slate-900 ${currentStyles.headerMargin}`}>
-            <div className="flex justify-between items-start text-xs">
-              <div>
-                <div className="font-extrabold uppercase tracking-wider text-slate-800">
-                  BỆNH VIỆN / KHOA ĐIỀU TRỊ NỘI TRÚ
-                </div>
-                <div className="text-slate-500 text-[11px] mt-0.5 font-medium">
-                  HỆ THỐNG ĐIỀU PHỐI LỊCH KHÁM BỆNH NỘI VIỆN
+            <div className="flex justify-between items-start text-xs text-slate-900 pb-2">
+              <div className="text-center font-bold">
+                <div className="text-xs uppercase tracking-wide">BỆNH VIỆN ĐKKV CHỢ LÁCH</div>
+                <div className="text-xs uppercase font-extrabold text-slate-900 border-b border-slate-900 inline-block pb-0.5">
+                  KHOA NỘI NHI NHIỄM
                 </div>
               </div>
-              <div className="text-right font-mono text-slate-600 text-[11px]">
-                <div>Ngày in: {new Date().toLocaleDateString('vi-VN')}</div>
-                <div>Chu kỳ: 5 phút/lượt khám</div>
+              <div className="text-center">
+                <div className="text-xs uppercase font-bold tracking-wide">
+                  CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+                </div>
+                <div className="text-xs font-semibold underline decoration-slate-600">
+                  Độc lập - Tự do - Hạnh phúc
+                </div>
               </div>
             </div>
 
-            <div className="text-center mt-3 mb-1">
+            <div className="text-center mt-2 mb-2">
               <h1 className={`${currentStyles.titleSize} uppercase tracking-tight text-slate-950 font-black`}>
-                BẢNG ĐIỀU PHỐI LỊCH KHÁM BỆNH NỘI VIỆN
+                BẢNG ĐIỀU PHỐI LỊCH KHÁM BỆNH NỘI TRÚ
               </h1>
-              <p className="text-xs text-slate-600 mt-0.5 font-medium">
-                Ngày khám: <strong className="text-slate-900">{dateStr}</strong> ({dayOfWeek}) — Bắt đầu:{' '}
-                <strong className="text-slate-900">{startTime}</strong>
+              <p className="text-xs text-slate-700 mt-0.5 font-medium">
+                Ngày: <strong className="text-slate-900">{dateStr}</strong> | Ca khám: <strong className="text-slate-900">Sáng</strong>
               </p>
-              {doc ? (
-                <div className="inline-block mt-1 px-3 py-1 bg-indigo-50 border border-indigo-200 rounded-lg text-xs font-black text-indigo-950">
-                  BÁC SĨ PHỤ TRÁCH: {doc.name.toUpperCase()} (Phòng: {doc.assignedRooms.join(', ')})
-                </div>
-              ) : (
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  (Danh sách tổng hợp toàn bộ các bác sĩ trong phiên khám)
-                </p>
-              )}
+            </div>
+
+            <div className="mt-2 pt-1.5 border-t border-slate-300 text-xs text-slate-900 space-y-0.5">
+              <div className="font-bold">
+                BÁC SĨ PHỤ TRÁCH: <span className="font-extrabold uppercase">{doc ? doc.name : 'TOÀN BỘ BÁC SĨ TRONG PHIÊN KHÁM'}</span>
+              </div>
+              <div className="font-bold">
+                BUỒNG PHỤ TRÁCH : <span className="font-mono font-semibold">{doc ? doc.assignedRooms.join(', ') : 'Tất cả buồng bệnh'}</span>
+              </div>
             </div>
           </div>
 
           {/* BẢNG DANH SÁCH BỆNH NHÂN */}
-          {isSimpleMode ? (
-            /* CHẾ ĐỘ 4 CỘT CHUẨN A4: STT, TÊN BỆNH NHÂN, GIỜ Y LỆNH, GHI CHÚ */
+          {isFiveColumnMode ? (
+            /* CHẾ ĐỘ 5 CỘT QUY ĐỊNH: STT, HỌ VÀ TÊN, GIỜ Y LỆNH, GIƯỜNG PHÒNG, GHI CHÚ */
             <table className={`w-full text-left ${currentStyles.tableText} border-collapse border-2 border-slate-900`}>
               <thead>
                 <tr className="bg-slate-200 text-slate-950 font-black uppercase border-b-2 border-slate-900 text-center">
-                  <th className={`${currentStyles.cellPadding} border border-slate-400 w-12`}>
+                  <th className={`${currentStyles.cellPadding} border border-slate-400 w-12 text-center`}>
                     STT
                   </th>
                   <th className={`${currentStyles.cellPadding} border border-slate-400 text-left`}>
-                    TÊN BỆNH NHÂN
+                    HỌ VÀ TÊN
                   </th>
-                  <th className={`${currentStyles.cellPadding} border border-slate-400 w-32 bg-slate-300 text-slate-950 tracking-wider`}>
+                  <th className={`${currentStyles.cellPadding} border border-slate-400 w-32 bg-slate-300 text-slate-950 tracking-wider text-center`}>
                     GIỜ Y LỆNH
                   </th>
-                  <th className={`${currentStyles.cellPadding} border border-slate-400 w-48 text-center`}>
+                  <th className={`${currentStyles.cellPadding} border border-slate-400 w-32 text-center`}>
+                    GIƯỜNG PHÒNG
+                  </th>
+                  <th className={`${currentStyles.cellPadding} border border-slate-400 w-52 text-left`}>
                     GHI CHÚ
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {doctorPatients.map((p, idx) => (
-                  <tr
-                    key={p.id}
-                    className={`border-b border-slate-400 ${
-                      idx % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'
-                    }`}
-                  >
-                    {/* STT */}
-                    <td className={`${currentStyles.cellPadding} border border-slate-400 text-center font-mono font-bold text-slate-700`}>
-                      {idx + 1}
-                    </td>
+                {doctorPatients.map((p, idx) => {
+                  // Định dạng Giường phòng (kèm số giường nếu có dữ liệu ở cột SG)
+                  const roomBedDisplay = p.sg && p.sg.trim()
+                    ? `${p.normalizedRoom} (G.${p.sg.trim()})`
+                    : p.normalizedRoom;
 
-                    {/* TÊN BỆNH NHÂN */}
-                    <td className={`${currentStyles.cellPadding} border border-slate-400 font-bold text-slate-950`}>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-extrabold text-slate-950">{p.name}</span>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="font-mono font-bold text-[11px] px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-800">
-                            P.{p.normalizedRoom}
-                          </span>
-                          {p.isKS && (
-                            <span className="font-black text-[9px] px-1 py-0.2 bg-rose-100 text-rose-800 rounded border border-rose-300">
-                              KS
-                            </span>
-                          )}
-                          {p.isPKD && (
-                            <span className="font-black text-[9px] px-1 py-0.2 bg-teal-100 text-teal-800 rounded border border-teal-300">
-                              PKD
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
+                  // Ghi rõ diện ưu tiên (KS Tiêm sáng, PKD Khí dung, Giữ giờ cũ, Mới nhập viện...)
+                  const priorityNotes: string[] = [];
+                  if (p.isKS && p.isPKD) {
+                    priorityNotes.push('KS Tiêm sáng + PKD Khí dung');
+                  } else if (p.isKS) {
+                    priorityNotes.push('KS Tiêm sáng');
+                  } else if (p.isPKD) {
+                    priorityNotes.push('PKD Khí dung');
+                  }
 
-                    {/* GIỜ Y LỆNH */}
-                    <td className={`${currentStyles.cellPadding} border border-slate-400 text-center bg-slate-100/80`}>
-                      <span className={`print-slot-time font-mono font-black ${currentStyles.slotText} text-slate-950 inline-block tracking-wider`}>
-                        {p.slotTime}
-                      </span>
-                    </td>
+                  if (p.hasConflict) {
+                    priorityNotes.push('Đã chỉnh do xung đột');
+                  } else if (p.previousTime) {
+                    priorityNotes.push('Giữ giờ cũ');
+                  } else if (p.statusNote && p.statusNote.includes('Mới nhập viện')) {
+                    priorityNotes.push('Mới nhập viện');
+                  }
 
-                    {/* CỘT GHI CHÚ */}
-                    <td className={`${currentStyles.cellPadding} border border-slate-400 text-slate-400 text-[11px]`}>
-                      {p.note || ''}
-                    </td>
-                  </tr>
-                ))}
+                  if (p.note && p.note.trim()) {
+                    priorityNotes.push(p.note.trim());
+                  }
+
+                  const finalNote = priorityNotes.join(' • ');
+
+                  return (
+                    <tr
+                      key={p.id}
+                      className={`border-b border-slate-400 ${
+                        idx % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'
+                      }`}
+                    >
+                      {/* STT */}
+                      <td className={`${currentStyles.cellPadding} border border-slate-400 text-center font-mono font-bold text-slate-700`}>
+                        {idx + 1}
+                      </td>
+
+                      {/* HỌ VÀ TÊN (chữ in hoa) */}
+                      <td className={`${currentStyles.cellPadding} border border-slate-400 font-extrabold text-slate-950 uppercase`}>
+                        {p.name.toUpperCase()}
+                      </td>
+
+                      {/* GIỜ Y LỆNH: IN ĐẬM VÀ CỠ CHỮ LỚN HƠN CÁC CỘT KHÁC */}
+                      <td className={`${currentStyles.cellPadding} border border-slate-400 text-center bg-slate-100/80`}>
+                        <span className={`print-slot-time font-mono font-black ${currentStyles.slotText} text-slate-950 inline-block tracking-wider`}>
+                          {p.slotTime}
+                        </span>
+                      </td>
+
+                      {/* GIƯỜNG PHÒNG */}
+                      <td className={`${currentStyles.cellPadding} border border-slate-400 text-center font-mono font-bold text-slate-900`}>
+                        {roomBedDisplay}
+                      </td>
+
+                      {/* GHI CHÚ: Ghi rõ diện ưu tiên */}
+                      <td className={`${currentStyles.cellPadding} border border-slate-400 text-slate-700 text-xs font-medium`}>
+                        {finalNote}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           ) : (
@@ -522,18 +545,18 @@ export const PrintScheduleModal: React.FC<PrintScheduleModalProps> = ({
                 <option value="large">Cỡ chữ: To rõ (&lt;15 ca)</option>
               </select>
 
-              {/* Chuyển đổi 4 cột / 10 cột */}
+              {/* Chuyển đổi 5 cột chuẩn / 10 cột chi tiết */}
               <button
-                onClick={() => setIsSimpleMode(!isSimpleMode)}
+                onClick={() => setIsFiveColumnMode(!isFiveColumnMode)}
                 className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1.5 cursor-pointer ${
-                  isSimpleMode
+                  isFiveColumnMode
                     ? 'bg-teal-500/20 border-teal-400/40 text-teal-300'
                     : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-750'
                 }`}
-                title="Bật/tắt chế độ 4 cột (STT, Tên, Giờ Y Lệnh, Ghi Chú)"
+                title="Bật/tắt chế độ 5 cột chuẩn quy định (STT, HỌ VÀ TÊN, GIỜ Y LỆNH, GIƯỜNG PHÒNG, GHI CHÚ)"
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
-                {isSimpleMode ? '4 Cột Chuẩn A4' : 'Đầy Đủ 10 Cột'}
+                {isFiveColumnMode ? '5 Cột Chuẩn A4' : 'Đầy Đủ 10 Cột'}
               </button>
 
               {/* HIỂN THỊ SONG SONG 2 CHỨC NĂNG: [IN LỊCH KHÁM] VÀ [XUẤT FILE PDF] */}

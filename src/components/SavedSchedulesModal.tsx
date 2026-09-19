@@ -12,6 +12,7 @@ import {
   FileSpreadsheet,
   Building2,
   AlertTriangle,
+  Eye,
 } from 'lucide-react';
 
 interface SavedSchedulesModalProps {
@@ -20,6 +21,7 @@ interface SavedSchedulesModalProps {
   savedSchedules: SavedScheduleDay[];
   onDeleteSchedule: (id: string) => void;
   onSelectAsReference?: (schedule: SavedScheduleDay) => void;
+  onLoadScheduleForView?: (schedule: SavedScheduleDay) => void;
 }
 
 export const SavedSchedulesModal: React.FC<SavedSchedulesModalProps> = ({
@@ -28,6 +30,7 @@ export const SavedSchedulesModal: React.FC<SavedSchedulesModalProps> = ({
   savedSchedules,
   onDeleteSchedule,
   onSelectAsReference,
+  onLoadScheduleForView,
 }) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -146,11 +149,22 @@ export const SavedSchedulesModal: React.FC<SavedSchedulesModalProps> = ({
                       </div>
                     ) : (
                       <>
+                        {onLoadScheduleForView && (
+                          <button
+                            onClick={() => onLoadScheduleForView(item)}
+                            className="px-3 py-1.5 text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                            title="Xem chi tiết, xuất viện & tiếp nhận bệnh nhân mới cho ngày này"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                            Xem & Biến Động
+                          </button>
+                        )}
+
                         <button
                           onClick={() =>
                             exportScheduleToExcel(item.patients, item.displayDate.replace(/\//g, '_'))
                           }
-                          className="px-3 py-1.5 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg flex items-center gap-1.5 transition-colors"
+                          className="px-3 py-1.5 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
                           title="Xuất file Excel lịch của ngày này"
                         >
                           <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
@@ -160,7 +174,7 @@ export const SavedSchedulesModal: React.FC<SavedSchedulesModalProps> = ({
                         <button
                           id={`btn-delete-schedule-${item.id}`}
                           onClick={() => setDeletingId(item.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200 cursor-pointer"
                           title="Nhấn để xóa bản ghi lịch ngày này"
                         >
                           <Trash2 className="w-4 h-4" />
